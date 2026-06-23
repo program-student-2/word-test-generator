@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>単語テスト生成 — 使い方ガイド</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --ink-900: #0f172a;
+            --ink-700: #334155;
+            --ink-500: #64748b;
+            --line: #e2e8f0;
+            --accent: #4f46e5;
+        }
+
+        body {
+            background-color: #fafbfd;
+            color: var(--ink-700);
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            font-feature-settings: "palt";
+        }
+
+        .bg-mesh::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(60% 40% at 10% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+                radial-gradient(55% 38% at 100% 8%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+                radial-gradient(50% 32% at 80% 100%, rgba(168, 85, 247, 0.10) 0%, transparent 60%);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.04),
+                0 14px 36px -10px rgba(15, 23, 42, 0.10);
+        }
+
+        .eyebrow {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--ink-500);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: var(--ink-700);
+            border: 1px solid var(--line);
+        }
+    </style>
+</head>
+
+<body class="bg-mesh">
+
+    <!-- スクショ用に幅を絞った縦長 1 ページ -->
+    <main class="max-w-md mx-auto px-5 py-10">
+
+        <!-- ヒーロー -->
+        <header class="text-center mb-8">
+            <div
+                class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 border border-slate-200 mb-4">
+                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2.5"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h7" />
+                </svg>
+                <span class="eyebrow">Word Test Generator</span>
+            </div>
+            <h1
+                class="text-3xl font-extrabold tracking-tight leading-tight bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 bg-clip-text text-transparent">
+                単語テスト生成ツール
+            </h1>
+            <p class="text-sm text-slate-500 mt-2">範囲を選ぶだけで、単語テストの問題用紙＆解答を<br>自動でA4プリント化できます</p>
+        </header>
+
+        <!-- 3ステップ -->
+        <section class="card rounded-2xl p-6 mb-5">
+            <p class="eyebrow mb-4">3ステップで完成</p>
+            <ol class="space-y-4">
+                <li class="flex items-start gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-lg bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-bold text-slate-800 text-sm">単語帳とテスト名を選ぶ</p>
+                        <p class="text-xs text-slate-500 mt-0.5">10冊から選択。テスト名は任意(例:第3回 小テスト)</p>
+                    </div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-lg bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-bold text-slate-800 text-sm">範囲・問題数・形式を指定</p>
+                        <p class="text-xs text-slate-500 mt-0.5">No.範囲(プリセットあり)/問題数/英→日・日→英</p>
+                    </div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-lg bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-bold text-slate-800 text-sm">生成 → 印刷(PDF保存も可)</p>
+                        <p class="text-xs text-slate-500 mt-0.5">問題用紙と解答が別ページで自動レイアウト</p>
+                    </div>
+                </li>
+            </ol>
+        </section>
+
+        <!-- 主な機能 -->
+        <section class="card rounded-2xl p-6 mb-5">
+            <p class="eyebrow mb-4">主な機能</p>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-xl bg-slate-50 border border-slate-200/70 p-3">
+                    <p class="text-sm font-bold text-slate-800">📚 10冊収録</p>
+                    <p class="text-[11px] text-slate-500 mt-1">英単語・英熟語・英検・古文に対応</p>
+                </div>
+                <div class="rounded-xl bg-slate-50 border border-slate-200/70 p-3">
+                    <p class="text-sm font-bold text-slate-800">🎲 ランダム出題</p>
+                    <p class="text-[11px] text-slate-500 mt-1">「別パターン」で何通りでも</p>
+                </div>
+                <div class="rounded-xl bg-slate-50 border border-slate-200/70 p-3">
+                    <p class="text-sm font-bold text-slate-800">🖨 A4最適印刷</p>
+                    <p class="text-[11px] text-slate-500 mt-1">問題+解答、ページ番号付き</p>
+                </div>
+                <div class="rounded-xl bg-slate-50 border border-slate-200/70 p-3">
+                    <p class="text-sm font-bold text-slate-800">💾 設定を記憶</p>
+                    <p class="text-[11px] text-slate-500 mt-1">前回の条件を自動で復元</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 単語帳について -->
+        <section class="card rounded-2xl p-6 mb-5">
+            <p class="eyebrow mb-4">単語帳について</p>
+
+            <p class="text-[11px] font-bold text-slate-400 mb-2">最初から使えるサンプル</p>
+            <div class="flex flex-wrap gap-1.5 mb-3">
+                <span class="pill">サンプル英単語</span>
+                <span class="pill">サンプル古文単語</span>
+            </div>
+
+            <p class="text-sm text-slate-600 leading-relaxed">
+                自分の単語帳を追加するには、Excel（<span class="font-mono text-[12px] bg-slate-100 px-1 rounded">No., 単語, 意味</span>）を用意して
+                <span class="font-mono text-[12px] bg-slate-100 px-1 rounded">scripts/convert_excel.py</span> を実行してください。
+                詳しくは <span class="font-semibold">README</span> を参照。
+            </p>
+            <p class="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 leading-relaxed">
+                市販単語帳のデータは著作権のため同梱していません。各自で用意し、私的利用の範囲でご使用ください。
+            </p>
+        </section>
+
+        <!-- 起動方法 -->
+        <section class="card rounded-2xl p-6 mb-6">
+            <p class="eyebrow mb-4">起動方法</p>
+            <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                    <span class="flex-shrink-0 mt-0.5 text-indigo-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M5 13l4 4L19 7" />
+                        </svg>
+                    </span>
+                    <p class="text-sm text-slate-700"><span class="font-bold">USBに入れて持ち運び</span><br>
+                        <span class="text-xs text-slate-500">フォルダごとコピー → index.html をダブルクリック。インストール不要・オフラインOK</span>
+                    </p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="flex-shrink-0 mt-0.5 text-indigo-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M5 13l4 4L19 7" />
+                        </svg>
+                    </span>
+                    <p class="text-sm text-slate-700"><span class="font-bold">Edge / Chrome で開く</span><br>
+                        <span class="text-xs text-slate-500">お気に入りやショートカットに登録すれば1クリックで起動</span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center">
+            <p class="text-[11px] text-slate-400">※ 教材データは校内利用のみ・外部公開は不可</p>
+        </footer>
+
+    </main>
+
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+# 元Excel（市販単語帳など）— 公開しない
+date_xlsx/
+
+# 生成された単語帳データは全て対象外（著作権データの誤コミット防止）。
+# サンプルだけは明示的に許可（force-add 済み）。
+data/*
+!data/books.js
+!data/sample-en.js
+!data/sample-kobun.js
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# エージェント/エディタのローカル設定
+.claude/
+
+# 一時ファイル
+*.tmp
+*.log

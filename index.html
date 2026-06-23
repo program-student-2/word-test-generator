@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>単語テスト生成</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '"Noto Sans JP"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg-base: #fafbfd;
+            --ink-900: #0f172a;
+            --ink-700: #334155;
+            --ink-500: #64748b;
+            --ink-300: #cbd5e1;
+            --line: #e2e8f0;
+            --accent: #4f46e5;
+            --accent-soft: #eef2ff;
+            --accent-strong: #4338ca;
+            --surface: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--ink-700);
+            -webkit-font-smoothing: antialiased;
+            font-feature-settings: "palt";
+            letter-spacing: 0.005em;
+        }
+
+        /* メッシュ風の柔らかい背景。subtle にすることで主役はカード側にする。 */
+        .bg-mesh::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(60% 40% at 12% 0%, rgba(99, 102, 241, 0.10) 0%, transparent 60%),
+                radial-gradient(50% 35% at 95% 5%, rgba(56, 189, 248, 0.10) 0%, transparent 60%),
+                radial-gradient(45% 30% at 80% 100%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px) saturate(140%);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.04),
+                0 12px 32px -8px rgba(15, 23, 42, 0.08),
+                0 24px 48px -16px rgba(15, 23, 42, 0.06);
+        }
+
+        /* セクション間のヘアライン(.glass-card 内で使う) */
+        .section-divider {
+            border-top: 1px solid var(--line);
+        }
+
+        /* 入力欄のフォーカスを統一(ring を slate ベースのリッチな影に) */
+        .input-ring {
+            transition: box-shadow 160ms ease, border-color 160ms ease;
+        }
+
+        .input-ring:focus-within,
+        .input-ring:focus {
+            box-shadow:
+                0 0 0 4px rgba(99, 102, 241, 0.12),
+                0 1px 2px rgba(15, 23, 42, 0.04);
+            border-color: #818cf8;
+        }
+
+        /* ラベル統一 */
+        .label-eyebrow {
+            display: block;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            color: var(--ink-500);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .label-eyebrow .muted {
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 500;
+            color: var(--ink-300);
+            margin-left: 6px;
+        }
+
+        /* プリセットチップ */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 11px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--ink-700);
+            background: #f8fafc;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            transition: all 140ms ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .chip:hover {
+            background: var(--accent-soft);
+            border-color: #c7d2fe;
+            color: var(--accent);
+        }
+
+        .chip.is-active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            box-shadow: 0 1px 2px rgba(79, 70, 229, 0.3);
+        }
+
+        .chip:active {
+            transform: scale(0.96);
+        }
+
+        /* プライマリボタン */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 10px;
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.4),
+                0 4px 10px -2px rgba(15, 23, 42, 0.25),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.4),
+                0 8px 16px -2px rgba(15, 23, 42, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        /* セカンダリボタン */
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink-700);
+            background: white;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            transition: all 140ms ease;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.98);
+        }
+
+        /* アクセントボタン(印刷) */
+        .btn-accent {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+            border-radius: 10px;
+            box-shadow:
+                0 1px 2px rgba(79, 70, 229, 0.4),
+                0 4px 10px -2px rgba(79, 70, 229, 0.25),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transition: transform 140ms ease, box-shadow 140ms ease;
+        }
+
+        .btn-accent:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 1px 2px rgba(79, 70, 229, 0.4),
+                0 8px 16px -2px rgba(79, 70, 229, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-accent:active {
+            transform: scale(0.98);
+        }
+
+        /* number input のスピナー控えめに */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            opacity: 0.4;
+        }
+
+        /* 出現アニメーション */
+        @keyframes rise-in {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .rise-in {
+            animation: rise-in 420ms cubic-bezier(0.16, 0.84, 0.32, 1);
+        }
+
+        /* スタガー入場(問題行が 1 個ずつ遅延しながら立ち上がる) */
+        @keyframes stagger-in {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stagger-item {
+            animation: stagger-in 360ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+        }
+
+        /* スクロールバーを目立たないスリムなものに(WebKit 系のみ。Firefox は標準) */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.22);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            transition: background 160ms ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.45);
+            background-clip: padding-box;
+        }
+
+        /* レンジ覆域バー(範囲入力の下に表示する位置プレビュー) */
+        .range-gauge {
+            position: relative;
+            height: 4px;
+            background: #eef2f7;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .range-gauge__fill {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
+            border-radius: 999px;
+            transition: left 280ms cubic-bezier(0.2, 0.7, 0.2, 1),
+                width 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+        }
+
+        /* 空状態カード(プレビュー前の領域) */
+        .empty-state {
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* A4 用紙風の表示をより上質に */
+        .a4-paper {
+            background: #fefefe !important;
+            box-shadow:
+                0 0 0 1px rgba(15, 23, 42, 0.04),
+                0 1px 2px rgba(15, 23, 42, 0.04),
+                0 16px 40px -8px rgba(15, 23, 42, 0.10),
+                0 40px 64px -24px rgba(15, 23, 42, 0.08) !important;
+        }
+
+        /* 国語(縦書き)用: 画面プレビューも A4 横向きで表示 */
+        .a4-paper.landscape {
+            width: 297mm;
+            min-height: 210mm;
+            /* 本文(左) | ヘッダー(右) の横並びにする */
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 8mm;
+            /* 複数ページが画面で重ならないよう下に余白(印刷時は @media print で 0 にリセット) */
+            margin: 0 auto 12mm;
+        }
+
+        /* 横長プレビューが画面幅を超えるときに横スクロールできるように */
+        #previewArea {
+            overflow-x: auto;
+        }
+
+        /* ── 縦書き時: 横書きヘッダーは隠し、専用の縦ヘッダー(.v-header)を右に置く ── */
+        .a4-paper.landscape>header {
+            display: none !important;
+        }
+
+        .a4-paper.landscape>.vertical-list {
+            order: 1;
+            /* 本文を左へ */
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        /* 縦ヘッダーは通常(横書き)時は非表示 */
+        .v-header {
+            display: none;
+        }
+
+        .a4-paper.landscape>.v-header {
+            display: flex;
+            order: 2;
+            /* 右側へ */
+            flex-direction: column;
+            /* 上→下: 単語テスト → 氏名 → 点数 */
+            align-items: center;
+            gap: 10mm;
+            flex: 0 0 auto;
+            padding-left: 6mm;
+            border-left: 2px solid #1e293b;
+        }
+
+        .v-header-title {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 21px;
+            font-weight: 700;
+            color: var(--ink-900);
+            letter-spacing: 0.06em;
+        }
+
+        /* 氏名: ラベル「氏名」+ 下に書き込む縦の余白 */
+        .v-header-field {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            height: 70mm;
+            /* 氏名を縦に書くスペース */
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink-700);
+        }
+
+        /* 点数: ラベル「点数」+ 「／ N」 */
+        .v-header-score {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink-700);
+            display: flex;
+            align-items: center;
+            gap: 4mm;
+        }
+
+        .v-header-score .v-header-score-val {
+            font-size: 16px;
+            color: var(--ink-300);
+            letter-spacing: 0.05em;
+        }
+
+        /* kbd: ショートカット表示 */
+        kbd {
+            display: inline-block;
+            line-height: 1;
+            color: var(--ink-700);
+        }
+
+        /* 使い方(details): 既定の三角マーカーを消し、開いたら矢印を回転 */
+        #howto summary::-webkit-details-marker {
+            display: none;
+        }
+
+        #howto[open] .howto-chevron {
+            transform: rotate(180deg);
+        }
+
+        /* ───────── 国語(古文)用 縦書き格子レイアウト ─────────
+           英語版と同じく「格子(セル)」で構成する。
+           列(.v-item)を右→左に並べ、各列は上に【問題セル(番号+古語)】、
+           下に【記入セル】。セル間は横の格子線、列間は縦の格子線で仕切る。 */
+        /* 上下 2 段(.v-band)を縦に積む。各段は折り返さず、列が幅いっぱいに詰まる。 */
+        .vertical-list {
+            display: flex !important;
+            flex-direction: column;
+            gap: 0;
+            /* 外枠(上辺と右辺=縦書きの始点側) */
+            border-top: 1.5px solid #94a3b8;
+            border-right: 1.5px solid #94a3b8;
+        }
+
+        /* 1 段 = 横一列の列群。右→左に並べ、折り返さず段内に収める(列は自動で縮む)。 */
+        .v-band {
+            display: flex;
+            flex-direction: row-reverse;
+            flex-wrap: nowrap;
+            flex: 1 1 0;
+            /* 上下を等分 */
+            min-height: 0;
+            min-width: 0;
+            border-bottom: 1.5px solid #94a3b8;
+            /* 段の下辺(=2 段の境界線・外枠下辺) */
+        }
+
+        .v-item {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 0;
+            /* 段の幅を等分。ただし広がりすぎないよう上限を設ける
+               (最終ページなど列数が少ない段で 1 列が間延びしないように) */
+            max-width: 15mm;
+            min-width: 0;
+            box-sizing: border-box;
+            border-left: 1px solid #cbd5e1;
+            /* 列の縦線 */
+        }
+
+        /* 問題セル: 番号(上) + 古語(縦)。固定高さなので横の格子線が全列で揃う。 */
+        .v-cell-q {
+            height: 24mm;
+            width: 100%;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 1.5mm;
+            box-sizing: border-box;
+            border-bottom: 1px solid #cbd5e1;
+            /* 問題と記入欄を分ける横の格子線 */
+            overflow: hidden;
+        }
+
+        .v-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5px;
+            font-weight: 700;
+            color: var(--ink-500);
+            margin-bottom: 1.5mm;
+        }
+
+        .v-word {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-900);
+            line-height: 1.35;
+        }
+
+        /* 記入セル: 解答用紙では解答を、問題用紙では空欄(記入スペース)に。
+           1 枚に上下 2 段で収まるよう、1 列の合計高さ ≒ 半ページに調整。 */
+        .v-cell-a {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            min-width: 0;
+            display: flex;
+            justify-content: center;
+            padding-top: 2mm;
+            padding-bottom: 5mm;
+            /* 下部に No. を置くスペースを確保 */
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .v-answer {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1.45;
+        }
+
+        /* 復習用の元単語帳No.(縦書きセルの下部に小さく横書きで添える) */
+        .v-source-no {
+            position: absolute;
+            bottom: 1mm;
+            left: 0;
+            right: 0;
+            writing-mode: horizontal-tb;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.5px;
+            color: var(--ink-700);
+            text-align: center;
+        }
+
+        /* ───────── プレビュー = 印刷 を一致させる本文レイアウト ─────────
+           以前は画面=CSS Grid・印刷=inline-flex で見た目が食い違っていた。
+           画面でも印刷と同じ 2 列 inline-flex で組み、WYSIWYG にする。
+           (ID セレクタなので Tailwind の .grid より優先される) */
+        #testContainer:not(.vertical-list),
+        #answerContainer:not(.vertical-list) {
+            display: block;
+            font-size: 0;
+            /* inline 要素間のホワイトスペース除去 */
+        }
+
+        #testContainer:not(.vertical-list)>div,
+        #answerContainer:not(.vertical-list)>div {
+            display: inline-flex;
+            width: calc(50% - 14px);
+            vertical-align: top;
+            font-size: 11pt;
+        }
+
+        #testContainer:not(.vertical-list)>div {
+            padding-top: 2px;
+            padding-bottom: 2px;
+            margin-bottom: 8px;
+        }
+
+        #answerContainer:not(.vertical-list)>div {
+            padding-top: 4px;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+        }
+
+        /* 奇数番目(=左列)に右マージンを付けて 2 列のギャップを再現 */
+        #testContainer:not(.vertical-list)>div:nth-child(odd),
+        #answerContainer:not(.vertical-list)>div:nth-child(odd) {
+            margin-right: 28px;
+        }
+
+        /* prefers-reduced-motion 対応(アクセシビリティ) */
+        @media (prefers-reduced-motion: reduce) {
+
+            .rise-in,
+            .stagger-item {
+                animation: none;
+            }
+
+            * {
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* 印刷用のスタイル調整 */
+        @media print {
+            @page {
+                size: A4 portrait;
+                /* 余白は @page で全ページ共通に付与する。
+                   こうすると問題が複数ページにまたがっても、2 枚目以降の「上」にも
+                   余白ができ、先頭行が用紙の端で切れない。
+                   (以前はコンテナの padding で余白を付けていたため、padding が出る
+                   1 枚目の上・最終ページの下にしか余白が無く、途中ページの上が切れていた) */
+                margin: 15mm 20mm;
+
+                /* 右下にページ番号 (Chromium / Edge / Firefox の最近のバージョンで動作) */
+                @bottom-right {
+                    content: counter(page) " / " counter(pages);
+                    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+                    font-size: 9pt;
+                    color: #94a3b8;
+                }
+            }
+
+            /* 国語(縦書き)の A4 横向きは、名前付き @page では Chrome が確実に反映しないため、
+               JS が #dynamicPageStyle に @page { size: A4 landscape } を注入して切り替える
+               (applyPaperOrientation 参照)。ここでは指定しない。 */
+
+            /* body の pb-20 (= 5rem) が印刷時にも残ると最終ページが押し出されるので無効化。
+               print-color-adjust は exact を付けない(=economy)。exact だと装飾の
+               背景色・グラデーションまで忠実に印刷しようとして、プリンタへ送るデータが肥大化する。 */
+            html,
+            body {
+                background-color: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            /* ★印刷が遅い主因の対策★
+               メッシュ状のグラデーション背景(body::before)は position:fixed のため、
+               印刷時に各ページへ全面のカラー画像としてラスタライズされ、スプールデータが
+               巨大化していた(→プリンタへの転送に時間がかかる)。印刷では完全に消す。 */
+            .bg-mesh::before {
+                display: none !important;
+                background: none !important;
+            }
+
+            /* プレビュー用に画面で持っていた min-height:297mm / box-shadow / 角丸を解除。
+               これを残すと「ページ高ぴったり + padding + 1px の rounding」で余分な空ページが出る。 */
+            .a4-paper {
+                width: 100% !important;
+                min-height: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                /* 画面用の #fefefe をやめて純白に。全面の薄塗りラスタを発生させない。 */
+                background: #fff !important;
+                /* 画面プレビューの縮小(zoom)を解除して実寸で印刷する */
+                zoom: 1 !important;
+            }
+
+            .a4-paper.landscape {
+                zoom: 1 !important;
+                /* 印刷時も横向きの中身に確定した高さを与える。
+                   A4 landscape(210mm) - 上下余白(15mm×2) = 180mm。
+                   これで 2 段が等分の高さを持ち、解答(現代語訳)がセル内で折り返す。 */
+                height: 180mm !important;
+                min-height: 180mm !important;
+            }
+
+            /* 解答ページの mt-12 など、article 間のマージンが追加で 1 ページ作るのを防ぐ */
+            #previewArea,
+            #previewArea>* {
+                margin: 0 !important;
+            }
+
+            /* 問題用紙と解答用紙の間で確実に改ページ */
+            .page-break {
+                page-break-before: always;
+                break-before: page;
+            }
+
+            .print-container {
+                box-shadow: none !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                /* 余白は @page margin が全ページに付けるので、コンテナ側の padding は外す
+                   (両方付けると 1 枚目だけ余白が二重になる) */
+                padding: 0 !important;
+                border-radius: 0 !important;
+            }
+
+            /* 2 列レイアウト自体は画面・印刷共通(上部の共有ブロックで定義済み)。
+               ここでは印刷固有の「行を途中で改ページしない」指定だけを行う。 */
+            #testContainer:not(.vertical-list)>div,
+            #answerContainer:not(.vertical-list)>div {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            /* 縦書き(国語)モード: 各列(.v-item)は途中で改ページしない */
+            .vertical-list>.v-item {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            /* モノクロ印刷で解答を鮮明に */
+            .v-answer {
+                color: #111827 !important;
+            }
+
+            /* ヘッダ部のマージンも印刷時は控えめに */
+            .a4-paper>header {
+                margin-bottom: 16px !important;
+                padding-bottom: 8px !important;
+            }
+
+            /* 印刷時はスタガー入場をスキップ(印刷時にアニメ途中で固定される事故を防ぐ) */
+            .stagger-item {
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+
+            /* モノクロ印刷前提: 色文字(解答キーのインディゴ、【解答】ラベル等)は
+               黒に寄せる。モノクロ機で印刷すると色文字は中間グレーになり、かすれて
+               読みにくいため。これで色データも送られず、より軽く・鮮明になる。 */
+            .text-indigo-600 {
+                color: #111827 !important;
+            }
+        }
+
+        /* プレビュー時の A4 用紙風スタイル */
+        .a4-paper {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            border-radius: 8px;
+            padding: 15mm 20mm 15mm 20mm;
+            /* 画面では実寸 A4 だと大きすぎるので縮小表示(印刷は実寸のまま=後述の @media print で zoom:1)。
+               zoom はレイアウトごと縮むので、見た目の比率は印刷と完全一致(WYSIWYG)を保てる。 */
+            zoom: 0.72;
+        }
+
+        /* 横向き(国語)はさらに横幅が広いので強めに縮小 */
+        .a4-paper.landscape {
+            zoom: 0.48;
+        }
+
+        /* 起動時ローディング用 */
+        .spinner {
+            border: 2px solid rgba(99, 102, 241, 0.2);
+            border-top-color: #6366f1;
+            border-radius: 9999px;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-mesh pb-20 relative selection:bg-indigo-100 selection:text-indigo-900">
+
+    <main class="no-print max-w-3xl mx-auto pt-14 pb-12 px-4 relative z-10">
+
+        <header class="mb-10 flex items-center justify-between gap-4">
+            <div>
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/70 border border-slate-200/80 mb-3">
+                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2.5"
+                        viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M4 6h16M4 12h10M4 18h7"></path>
+                    </svg>
+                    <span class="text-[10.5px] tracking-[0.18em] font-bold uppercase text-slate-500">Word Test Generator</span>
+                </div>
+                <h1
+                    class="text-[30px] font-bold tracking-tight leading-tight bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 bg-clip-text text-transparent">
+                    単語テスト生成
+                </h1>
+                <p class="text-slate-500 mt-1.5 text-sm" id="appSubtitle">複数の単語帳に対応した出題プリント生成ツール</p>
+            </div>
+        </header>
+
+        <!-- データ読み込み失敗時のバナー -->
+        <div id="errorBanner"
+            class="hidden mb-6 rounded-xl border border-rose-200 bg-rose-50 text-rose-900 px-5 py-4 text-sm leading-relaxed"
+            role="alert" aria-live="polite">
+            <p class="font-semibold mb-1">単語データを読み込めませんでした</p>
+            <p id="errorBannerBody" class="text-rose-800/90"></p>
+        </div>
+
+        <section class="glass-card rounded-2xl overflow-hidden" aria-labelledby="settingsHeading">
+            <h2 id="settingsHeading" class="sr-only">出題設定</h2>
+
+            <!-- セクション1: 単語帳 -->
+            <div class="px-7 md:px-9 pt-7 pb-6">
+                <label for="bookSelect" class="label-eyebrow">単語帳</label>
+                <div class="relative">
+                    <select id="bookSelect" disabled aria-busy="true"
+                        class="appearance-none w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold input-ring outline-none cursor-pointer disabled:opacity-60 disabled:cursor-progress">
+                        <option>読み込み中...</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"
+                            aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p id="bookMeta" class="mt-2.5 text-xs text-slate-400 font-medium flex items-center gap-2 min-h-[18px]">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span>レジストリを取得しています...</span>
+                </p>
+                <!-- 版に関する注記など(該当する単語帳を選んだときだけ表示) -->
+                <p id="bookNote" class="hidden mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 leading-relaxed"></p>
+            </div>
+
+            <!-- セクション2: テスト名 -->
+            <div class="section-divider px-7 md:px-9 py-6">
+                <label for="customTitle" class="label-eyebrow">
+                    テスト名 <span class="muted">任意・空欄なら「単語テスト」</span>
+                </label>
+                <input type="text" id="customTitle" maxlength="40" placeholder="例:追試"
+                    autocomplete="off"
+                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold input-ring outline-none placeholder:text-slate-300 placeholder:font-normal">
+            </div>
+
+            <!-- セクション3: 範囲・問題数・形式 -->
+            <div class="section-divider px-7 md:px-9 py-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-7">
+                    <div>
+                        <label for="rangeStart" class="label-eyebrow">出題範囲 <span class="muted">No.</span></label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="rangeStart" value="1" min="1" inputmode="numeric"
+                                class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold input-ring outline-none">
+                            <span class="text-slate-300 font-medium select-none" aria-hidden="true">—</span>
+                            <input type="number" id="rangeEnd" value="1" inputmode="numeric"
+                                class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold input-ring outline-none">
+                        </div>
+                        <!-- 範囲のカバー位置を可視化する細いゲージ -->
+                        <div class="mt-3 range-gauge" aria-hidden="true">
+                            <div id="rangeGauge" class="range-gauge__fill" style="left: 0%; width: 100%;"></div>
+                        </div>
+                        <div class="mt-1 flex justify-between text-[10px] text-slate-400 font-mono tracking-wider">
+                            <span>1</span>
+                            <span id="rangeGaugeMax">—</span>
+                        </div>
+
+                        <div class="mt-2.5">
+                            <label for="rangePreset" class="sr-only">範囲プリセット</label>
+                            <div class="relative">
+                                <select id="rangePreset"
+                                    class="appearance-none w-full pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[12px] text-slate-600 font-medium input-ring outline-none cursor-pointer">
+                                    <option value="">プリセットから選択...</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.4"
+                                        viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="questionCount" class="label-eyebrow">出題数</label>
+                        <input type="number" id="questionCount" value="30" min="1" inputmode="numeric"
+                            class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold input-ring outline-none">
+                        <div id="countPresets" class="mt-2.5 flex gap-1.5 flex-wrap" role="group"
+                            aria-label="問題数プリセット">
+                            <button type="button" data-count="10" class="chip count-preset">10</button>
+                            <button type="button" data-count="20" class="chip count-preset">20</button>
+                            <button type="button" data-count="30" class="chip count-preset">30</button>
+                            <button type="button" data-count="50" class="chip count-preset">50</button>
+                            <button type="button" data-count="all" class="chip count-preset">全部</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="questionType" class="label-eyebrow">出題形式</label>
+                        <div class="relative">
+                            <select id="questionType"
+                                class="appearance-none w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold input-ring outline-none cursor-pointer">
+                                <option value="en2ja">英語 → 日本語</option>
+                                <option value="ja2en">日本語 → 英語</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2"
+                                    viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- フッター: ステータス + アクション -->
+            <div
+                class="bg-gradient-to-b from-slate-50/40 to-slate-50/80 px-7 md:px-9 py-5 border-t border-slate-200/70 flex items-center justify-between gap-4 flex-wrap">
+                <p id="statusHint" class="text-xs text-slate-500 font-medium">範囲を設定し、「テストを生成」を押してください。</p>
+                <div class="flex gap-2.5">
+                    <button id="reshuffleBtn" type="button"
+                        title="同じ条件で別の問題セットを生成 (Ctrl+R)"
+                        class="btn-secondary hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                            aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                        別パターン
+                    </button>
+                    <button id="generateBtn" type="button" disabled class="btn-primary">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                            aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                        </svg>
+                        テストを生成
+                    </button>
+                    <button id="printBtn" type="button" class="btn-accent hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                            aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                            </path>
+                        </svg>
+                        印刷する
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 使い方(折りたたみ)。既定は閉じていて UI を圧迫しない。印刷には出ない。 -->
+        <details id="howto" class="no-print mt-6">
+            <summary
+                class="list-none cursor-pointer select-none flex items-center justify-between rounded-xl border border-slate-200 bg-white/70 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-white transition-colors">
+                <span class="inline-flex items-center gap-2">
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                    使い方
+                </span>
+                <svg class="howto-chevron w-4 h-4 text-slate-400 transition-transform" fill="none"
+                    stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </summary>
+            <div
+                class="mt-2 rounded-xl border border-slate-200 bg-white/80 px-6 py-5 text-sm text-slate-600 leading-relaxed">
+                <ol class="space-y-2.5 list-decimal list-inside marker:text-slate-400 marker:font-semibold">
+                    <li><span class="font-semibold text-slate-700">単語帳を選ぶ</span> ― 一覧から出題したい単語帳を選択。</li>
+                    <li><span class="font-semibold text-slate-700">テスト名(任意)</span> ― 「第3回 小テスト」など。空欄なら「単語テスト」。</li>
+                    <li><span class="font-semibold text-slate-700">範囲・問題数・形式</span> ― No.範囲(プリセット/ゲージあり)、問題数(チップで即設定)、英→日/日→英を指定。</li>
+                    <li><span class="font-semibold text-slate-700">テストを生成</span> ― 下にプレビューが出ます。<span
+                            class="font-mono text-[12px] bg-slate-100 px-1 rounded">Ctrl+Enter</span> でもOK。</li>
+                    <li><span class="font-semibold text-slate-700">別パターン</span> ― 同じ条件で問題を引き直し。</li>
+                    <li><span class="font-semibold text-slate-700">印刷する</span> ― <span
+                            class="font-mono text-[12px] bg-slate-100 px-1 rounded">Ctrl+P</span> でも可。PDF保存も同じ画面から。</li>
+                </ol>
+                <div class="mt-4 pt-4 border-t border-slate-100 space-y-1.5 text-xs text-slate-500">
+                    <p>・設定(単語帳/範囲/問題数/形式/テスト名)は<span class="font-semibold">自動保存</span>され、次回起動時に復元されます。</p>
+                    <p>・<span class="font-semibold">古文単語</span>を選ぶと自動で<span class="font-semibold">縦書き・A4横向き</span>になり、設問数が多いと複数ページに分割されます。</p>
+                    <p>・印刷で日時/タイトルを消すには、印刷ダイアログの「ヘッダーとフッター」のチェックを外してください(設定は記憶されます)。</p>
+                </div>
+            </div>
+        </details>
+
+        <!-- 生成前のプレビュー空状態 -->
+        <div id="previewHint" class="empty-state mt-8 px-8 py-10 text-center">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200/60 mb-4">
+                <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" stroke-width="1.8"
+                    viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                    </path>
+                </svg>
+            </div>
+            <p class="text-sm text-slate-600 font-semibold mb-1">テストを生成すると、ここにプレビューが表示されます</p>
+            <p class="text-xs text-slate-400 mb-5">「テストを生成」を押すか、ショートカットでも生成できます</p>
+            <div class="inline-flex items-center gap-2 text-[11px] text-slate-500">
+                <span class="inline-flex items-center gap-1">
+                    <kbd class="px-1.5 py-0.5 font-mono bg-white border border-slate-200 rounded text-[10px]">Ctrl</kbd>
+                    <span class="text-slate-300">+</span>
+                    <kbd class="px-1.5 py-0.5 font-mono bg-white border border-slate-200 rounded text-[10px]">Enter</kbd>
+                    <span class="ml-1">生成</span>
+                </span>
+                <span class="text-slate-300">·</span>
+                <span class="inline-flex items-center gap-1">
+                    <kbd class="px-1.5 py-0.5 font-mono bg-white border border-slate-200 rounded text-[10px]">Ctrl</kbd>
+                    <span class="text-slate-300">+</span>
+                    <kbd class="px-1.5 py-0.5 font-mono bg-white border border-slate-200 rounded text-[10px]">P</kbd>
+                    <span class="ml-1">印刷</span>
+                </span>
+            </div>
+        </div>
+    </main>
+
+    <section id="previewArea" class="hidden mb-12" aria-label="生成されたテスト">
+
+        <article id="questionPaper" class="a4-paper print-container relative bg-white">
+            <header class="border-b-2 border-slate-800 pb-4 mb-8 flex justify-between items-end flex-wrap gap-4">
+                <div class="flex items-baseline">
+                    <h2 class="text-2xl font-bold text-slate-900 tracking-tight" id="testTitleHeading">単語テスト</h2>
+                    <span class="ml-3 text-[11px] font-bold tracking-widest text-slate-400 uppercase"
+                        id="testSubTitle">Vocabulary Test</span>
+                </div>
+                <div class="flex space-x-6 text-sm text-slate-800 font-medium">
+                    <div class="flex items-end">
+                        <span class="mr-2 mb-0.5 text-[10px] text-slate-500 uppercase tracking-widest">Date</span>
+                        <div class="w-24 border-b border-slate-400 h-5" aria-hidden="true"></div>
+                    </div>
+                    <div class="flex items-end">
+                        <span class="mr-2 mb-0.5 text-[10px] text-slate-500 uppercase tracking-widest">Name</span>
+                        <div class="w-48 border-b border-slate-400 h-5" aria-hidden="true"></div>
+                    </div>
+                    <div class="flex items-end ml-2 border border-slate-300 rounded px-3 py-1.5 bg-white">
+                        <span class="text-[10px] font-bold uppercase tracking-widest mr-3 mb-1 text-slate-500">Score</span>
+                        <!-- 採点者が点数を書き込むためのスペース。下線でガイドを出す -->
+                        <div class="w-12 border-b border-slate-400 h-5 mr-1" aria-hidden="true"></div>
+                        <div class="text-lg font-bold text-slate-400" id="scoreLabel">/ 0</div>
+                    </div>
+                </div>
+            </header>
+            <div id="testContainer" class="grid grid-cols-2 gap-x-12 gap-y-4 px-1"></div>
+        </article>
+
+        <article id="answerPaper" class="a4-paper print-container page-break mt-12 bg-white">
+            <header class="border-b-2 border-slate-800 pb-4 mb-8 flex justify-between items-end flex-wrap gap-4">
+                <div class="flex items-baseline">
+                    <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+                        <span id="answerTitleHeading">単語テスト</span>
+                        <span class="text-indigo-600 text-[20px] ml-2">【解答】</span>
+                    </h2>
+                    <span class="ml-3 text-[11px] font-bold tracking-widest text-slate-400 uppercase"
+                        id="answerSubTitle">Answer Key</span>
+                </div>
+            </header>
+            <div id="answerContainer" class="grid grid-cols-2 gap-x-12 gap-y-4 px-1"></div>
+        </article>
+
+        <!-- 縦書き(国語)用の複数ページはここに動的生成する。
+             横書き(英語)は上の固定 article をそのまま使う。 -->
+        <div id="dynamicPages"></div>
+    </section>
+
+    <!--
+      レジストリは <script> で同期的に読み込む。
+      file:// で開いてもブラウザのセキュリティ制限に引っ掛からないようにするため、
+      JSON ではなく JS 形式のデータローダ (data/books.js) を使う。
+      生成は scripts/convert_excel.py が一括で行う。
+    -->
+    <script src="data/books.js"></script>
+
+    <script>
+        // ------------------------------------------------------------------
+        // 単語テスト生成ツール
+        //
+        // 設計メモ:
+        //  - 静的 HTML 一式で完結し、データは <script> タグで読み込む JS から
+        //    window.WTG.books へ登録される (詳細は scripts/convert_excel.py)。
+        //  - 単語帳の追加は scripts/convert_excel.py の再実行だけで完了する。
+        //  - DOM へのテキスト挿入は textContent / createElement のみを使い、
+        //    データ値からの XSS を排除する(innerHTML は使わない)。
+        //  - 入力値はクライアントだけが触る前提でも厳しめに検証する。
+        // ------------------------------------------------------------------
+
+        const DATA_DIR = 'data';
+
+        // 起動時に最初に開く単語帳。該当 ID がレジストリにあればそれを使い、
+        // なければ books.json の先頭にフォールバックする。
+        const DEFAULT_BOOK_ID = 'sample-en';
+
+        // localStorage の key (バージョンを後ろにつけて後方互換の混乱を避ける)
+        const STORAGE_KEY = 'wtg.settings.v1';
+        // 範囲プリセットの粒度。100語ずつ。
+        const RANGE_PRESET_STEP = 100;
+
+        // 単語帳の種別ごとの出題形式ラベル。
+        // 選択肢の value は常に en2ja(=単語→意味) / ja2en(=意味→単語) で固定し、
+        // 表示テキストだけを種別に応じて差し替える。
+        const TYPE_LABELS = {
+            en: { en2ja: '英語 → 日本語', ja2en: '日本語 → 英語' },
+            kobun: { en2ja: '古語 → 現代語訳', ja2en: '現代語訳 → 古語' },
+            generic: { en2ja: '単語 → 意味', ja2en: '意味 → 単語' },
+        };
+
+        /** UI 要素への参照をまとめて保持しておく */
+        const el = {
+            bookSelect: document.getElementById('bookSelect'),
+            bookMeta: document.getElementById('bookMeta'),
+            bookNote: document.getElementById('bookNote'),
+            customTitle: document.getElementById('customTitle'),
+            testTitleHeading: document.getElementById('testTitleHeading'),
+            answerTitleHeading: document.getElementById('answerTitleHeading'),
+            rangeStart: document.getElementById('rangeStart'),
+            rangeEnd: document.getElementById('rangeEnd'),
+            rangePreset: document.getElementById('rangePreset'),
+            rangeGauge: document.getElementById('rangeGauge'),
+            rangeGaugeMax: document.getElementById('rangeGaugeMax'),
+            countPresets: document.getElementById('countPresets'),
+            questionCount: document.getElementById('questionCount'),
+            questionType: document.getElementById('questionType'),
+            generateBtn: document.getElementById('generateBtn'),
+            reshuffleBtn: document.getElementById('reshuffleBtn'),
+            printBtn: document.getElementById('printBtn'),
+            previewArea: document.getElementById('previewArea'),
+            questionPaper: document.getElementById('questionPaper'),
+            answerPaper: document.getElementById('answerPaper'),
+            testContainer: document.getElementById('testContainer'),
+            answerContainer: document.getElementById('answerContainer'),
+            testSubTitle: document.getElementById('testSubTitle'),
+            answerSubTitle: document.getElementById('answerSubTitle'),
+            scoreLabel: document.getElementById('scoreLabel'),
+            statusHint: document.getElementById('statusHint'),
+            errorBanner: document.getElementById('errorBanner'),
+            errorBannerBody: document.getElementById('errorBannerBody'),
+        };
+
+        /** 単語帳本体のメモ化キャッシュ。タブを開きっぱなしでも 2 回 fetch しない */
+        const bookCache = new Map();
+
+        /** 現在ロード中の単語帳。null の間は generate 不可 */
+        let currentBook = null;
+
+        // ------------------------------------------------------------------
+        // 起動シーケンス
+        // ------------------------------------------------------------------
+        boot().catch((err) => {
+            // 想定外の例外は念のためバナーへ。詳細は console に流して原因追跡可能にする。
+            console.error('[boot] 初期化に失敗', err);
+            showFatalError(buildLoadErrorMessage(err));
+        });
+
+        async function boot() {
+            const registry = await loadRegistry();
+            if (!registry.books || registry.books.length === 0) {
+                throw new Error('books.json に単語帳が登録されていません');
+            }
+
+            populateBookSelect(registry.books);
+            el.bookSelect.addEventListener('change', onBookChange);
+            el.generateBtn.addEventListener('click', onGenerateClick);
+            el.reshuffleBtn.addEventListener('click', onGenerateClick);
+            el.printBtn.addEventListener('click', () => window.print());
+            el.rangePreset.addEventListener('change', onRangePresetChange);
+            el.questionType.addEventListener('change', saveSettings);
+            el.customTitle.addEventListener('input', saveSettings);
+
+            // 問題数プリセットのチップにハンドラを付ける
+            for (const btn of el.countPresets.querySelectorAll('.count-preset')) {
+                btn.addEventListener('click', () => onCountPresetClick(btn.dataset.count));
+            }
+
+            // 範囲入力の値変更で問題数の最大値も追従させる(ユーザの好奇心が暴走しないように)
+            // また、変更があれば設定を保存し、プリセット select も同期する。
+            for (const input of [el.rangeStart, el.rangeEnd]) {
+                input.addEventListener('change', () => {
+                    clampInputs();
+                    syncRangePresetSelection();
+                    updateCountChipState();
+                    saveSettings();
+                });
+            }
+            el.questionCount.addEventListener('change', () => {
+                clampInputs();
+                updateCountChipState();
+                saveSettings();
+            });
+
+            // Ctrl+Enter で生成、Ctrl+R で再シャッフル
+            window.addEventListener('keydown', onKeyDown);
+
+            // 保存設定があればそこから単語帳を選ぶ。なければ DEFAULT_BOOK_ID。
+            // 復元対象は「保存時の book と同じ book を開く場合」だけにする
+            // (book が違うと範囲の最大値も変わるため、別 book の値を持ち込まない)
+            const saved = loadSettings();
+            const savedBook = saved && registry.books.find(b => b.id === saved.bookId);
+            const desiredId = savedBook?.id
+                || registry.books.find(b => b.id === DEFAULT_BOOK_ID)?.id
+                || registry.books[0].id;
+            await selectBook(desiredId, savedBook ? saved : null);
+        }
+
+        // ------------------------------------------------------------------
+        // データ層 (<script> タグでロードされる JS を待つ実装)
+        // ------------------------------------------------------------------
+        function loadRegistry() {
+            // books.js は HTML 内で先に同期ロードしているので、ここでは存在チェックだけ。
+            const reg = window.WTG && window.WTG.registry;
+            if (!reg || !Array.isArray(reg.books)) {
+                return Promise.reject(new Error(
+                    'data/books.js が読み込めていません。'
+                    + 'data/ フォルダが存在するか、scripts/convert_excel.py を実行済みか確認してください。'
+                ));
+            }
+            return Promise.resolve(reg);
+        }
+
+        function loadBook(id) {
+            if (bookCache.has(id)) return Promise.resolve(bookCache.get(id));
+            // セレクタ由来とはいえ id をパスに組み込むので念のため検証
+            if (!/^[a-zA-Z0-9_\-]+$/.test(id)) {
+                return Promise.reject(new Error(`不正な単語帳 ID: ${id}`));
+            }
+            // 既に同 id のスクリプトが入っていれば即座に返す
+            const already = window.WTG && window.WTG.books && window.WTG.books[id];
+            if (already) {
+                bookCache.set(id, already);
+                return Promise.resolve(already);
+            }
+            return loadScript(`${DATA_DIR}/${id}.js`).then(() => {
+                const data = window.WTG && window.WTG.books && window.WTG.books[id];
+                if (!data || !Array.isArray(data.words) || data.words.length === 0) {
+                    throw new Error(`単語帳「${id}」のデータが空です`);
+                }
+                bookCache.set(id, data);
+                return data;
+            });
+        }
+
+        /**
+         * <script src="..."> を動的に挿入し、ロード完了/失敗を Promise で返す。
+         * file:// で開いた状態でも動かしたいので fetch ではなく script タグを使う。
+         * 多重ロード対策のため URL でキャッシュする。
+         */
+        const scriptPromises = new Map();
+        function loadScript(src) {
+            if (scriptPromises.has(src)) return scriptPromises.get(src);
+            const p = new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.async = false;
+                s.onload = () => resolve();
+                s.onerror = () => {
+                    // file:// では失敗時に詳細を取れないため一般的な原因をメッセージにする
+                    reject(new Error(`${src} の読み込みに失敗しました。ファイルが存在するかご確認ください。`));
+                };
+                document.head.appendChild(s);
+            });
+            scriptPromises.set(src, p);
+            return p;
+        }
+
+        // ------------------------------------------------------------------
+        // UI 制御
+        // ------------------------------------------------------------------
+        function populateBookSelect(books) {
+            // 既存の <option> を消して入れ直す
+            el.bookSelect.textContent = '';
+            for (const book of books) {
+                const opt = document.createElement('option');
+                opt.value = book.id;
+                opt.textContent = book.title;
+                el.bookSelect.appendChild(opt);
+            }
+            el.bookSelect.disabled = false;
+            el.bookSelect.removeAttribute('aria-busy');
+        }
+
+        async function onBookChange(event) {
+            await selectBook(event.target.value);
+            saveSettings();
+        }
+
+        /**
+         * 単語帳を選択する。
+         * @param {string} id
+         * @param {object|null} restore - { rangeStart, rangeEnd, questionCount, questionType } が
+         *                                与えられた場合、その値で復元する(保存設定の復元用)
+         */
+        async function selectBook(id, restore = null) {
+            setBookMeta('loading', `「${id}」を読み込んでいます...`);
+            el.generateBtn.disabled = true;
+            try {
+                const book = await loadBook(id);
+                currentBook = book;
+                el.bookSelect.value = id;
+
+                // 範囲の最大値・初期値を実データに合わせて再設定
+                const maxNo = book.words[book.words.length - 1].no;
+                el.rangeStart.min = 1;
+                el.rangeStart.max = maxNo;
+                el.rangeEnd.min = 1;
+                el.rangeEnd.max = maxNo;
+
+                if (restore) {
+                    // 保存値が同じ単語帳に対するものなら復元する
+                    el.rangeStart.value = restore.rangeStart ?? 1;
+                    el.rangeEnd.value = restore.rangeEnd ?? maxNo;
+                    el.questionCount.value = restore.questionCount ?? 30;
+                    el.questionType.value = restore.questionType === 'ja2en' ? 'ja2en' : 'en2ja';
+                    el.customTitle.value = restore.customTitle ?? '';
+                } else {
+                    el.rangeStart.value = 1;
+                    el.rangeEnd.value = maxNo;
+                    el.questionCount.value = Math.min(30, maxNo);
+                }
+                if (Number(el.rangeStart.value) > maxNo) el.rangeStart.value = 1;
+                if (Number(el.rangeEnd.value) > maxNo) el.rangeEnd.value = maxNo;
+                updateTypeLabels(book.kind);
+                rebuildRangePreset(maxNo);
+                clampInputs();
+                syncRangePresetSelection();
+                updateCountChipState();
+
+                setBookMeta('ok', `${book.title}(No.1〜${maxNo})`);
+                showBookNote(id);
+                el.generateBtn.disabled = false;
+            } catch (err) {
+                console.error('[selectBook] 単語帳の読み込みに失敗', err);
+                currentBook = null;
+                setBookMeta('error', err.message);
+                showFatalError(err.message);
+            }
+        }
+
+        /** 単語帳の種別に応じて出題形式セレクトの表示ラベルを差し替える */
+        function updateTypeLabels(kind) {
+            const labels = TYPE_LABELS[kind] || TYPE_LABELS.en;
+            for (const opt of el.questionType.options) {
+                if (labels[opt.value]) opt.textContent = labels[opt.value];
+            }
+        }
+
+        /** 単語帳に応じて範囲プリセットを 100 語区切りで作り直す */
+        function rebuildRangePreset(maxNo) {
+            el.rangePreset.textContent = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = '範囲プリセット...';
+            el.rangePreset.appendChild(placeholder);
+
+            const allOpt = document.createElement('option');
+            allOpt.value = `1-${maxNo}`;
+            allOpt.textContent = `全範囲 (1〜${maxNo})`;
+            el.rangePreset.appendChild(allOpt);
+
+            for (let start = 1; start <= maxNo; start += RANGE_PRESET_STEP) {
+                const end = Math.min(start + RANGE_PRESET_STEP - 1, maxNo);
+                const opt = document.createElement('option');
+                opt.value = `${start}-${end}`;
+                opt.textContent = `${start}〜${end}`;
+                el.rangePreset.appendChild(opt);
+            }
+        }
+
+        /** 現在の範囲入力に一致するプリセットを select 側で選択状態にする */
+        function syncRangePresetSelection() {
+            const value = `${el.rangeStart.value}-${el.rangeEnd.value}`;
+            const match = Array.from(el.rangePreset.options).some(o => o.value === value);
+            el.rangePreset.value = match ? value : '';
+        }
+
+        function onRangePresetChange() {
+            const v = el.rangePreset.value;
+            if (!v) return;
+            const [start, end] = v.split('-').map(n => parseInt(n, 10));
+            if (Number.isFinite(start) && Number.isFinite(end)) {
+                el.rangeStart.value = start;
+                el.rangeEnd.value = end;
+                clampInputs();
+                syncRangePresetSelection();
+                saveSettings();
+            }
+        }
+
+        function onCountPresetClick(spec) {
+            if (!currentBook) return;
+            if (spec === 'all') {
+                const available = countInRange(toInt(el.rangeStart.value, 1), toInt(el.rangeEnd.value, 1));
+                el.questionCount.value = Math.max(1, available);
+            } else {
+                const n = parseInt(spec, 10);
+                if (Number.isFinite(n)) el.questionCount.value = n;
+            }
+            clampInputs();
+            updateCountChipState();
+            saveSettings();
+        }
+
+        /** 現在の questionCount に対応するチップを is-active 表示にする */
+        function updateCountChipState() {
+            const current = toInt(el.questionCount.value, -1);
+            const available = currentBook
+                ? countInRange(toInt(el.rangeStart.value, 1), toInt(el.rangeEnd.value, 1))
+                : -1;
+            for (const btn of el.countPresets.querySelectorAll('.count-preset')) {
+                const spec = btn.dataset.count;
+                const matches = spec === 'all'
+                    ? current === available && available > 0
+                    : parseInt(spec, 10) === current;
+                btn.classList.toggle('is-active', matches);
+            }
+        }
+
+        function onKeyDown(event) {
+            // 入力欄でのスペース/改行を奪わないように Ctrl+ のときだけ反応
+            if (!event.ctrlKey && !event.metaKey) return;
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (!el.generateBtn.disabled) el.generateBtn.click();
+            } else if (event.key.toLowerCase() === 'r') {
+                event.preventDefault();
+                if (!el.reshuffleBtn.classList.contains('hidden')) el.reshuffleBtn.click();
+            }
+        }
+
+        function setBookMeta(state, message) {
+            el.bookMeta.textContent = '';
+            if (state === 'loading') {
+                const spinner = document.createElement('span');
+                spinner.className = 'spinner';
+                spinner.setAttribute('aria-hidden', 'true');
+                el.bookMeta.appendChild(spinner);
+            } else if (state === 'ok') {
+                // ok 状態のときはチェックマークを添えてリッチに
+                const check = document.createElement('span');
+                check.setAttribute('aria-hidden', 'true');
+                check.innerHTML = '<svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+                el.bookMeta.appendChild(check.firstChild);
+            }
+            const text = document.createElement('span');
+            text.textContent = message;
+            if (state === 'error') text.className = 'text-rose-600 font-medium';
+            if (state === 'ok') text.className = 'text-slate-500';
+            el.bookMeta.appendChild(text);
+        }
+
+        /** レジストリに note があれば注記を表示、無ければ隠す */
+        function showBookNote(id) {
+            const reg = window.WTG && window.WTG.registry;
+            const entry = reg && reg.books && reg.books.find(b => b.id === id);
+            const note = entry && entry.note;
+            if (note) {
+                el.bookNote.textContent = `※ ${note}`;
+                el.bookNote.classList.remove('hidden');
+            } else {
+                el.bookNote.textContent = '';
+                el.bookNote.classList.add('hidden');
+            }
+        }
+
+        function showFatalError(message) {
+            el.errorBannerBody.textContent = message;
+            el.errorBanner.classList.remove('hidden');
+        }
+
+        function hideFatalError() {
+            el.errorBanner.classList.add('hidden');
+        }
+
+        // ------------------------------------------------------------------
+        // 入力検証
+        // ------------------------------------------------------------------
+        /**
+         * 範囲・問題数の値を「常に妥当な範囲に収まるように」その場で補正する。
+         * - 範囲の上限・下限を確実に守る
+         * - start > end の入れ替わりを許容
+         * - 問題数の上限を「現在の範囲に含まれる語数」に同期する
+         * これにより generate 時に弾く条件が劇的に減り、ユーザは何度も叱られない。
+         */
+        function clampInputs() {
+            if (!currentBook) return;
+            const maxNo = currentBook.words[currentBook.words.length - 1].no;
+
+            let start = toInt(el.rangeStart.value, 1);
+            let end = toInt(el.rangeEnd.value, maxNo);
+            start = clamp(start, 1, maxNo);
+            end = clamp(end, 1, maxNo);
+            if (start > end) [start, end] = [end, start];
+            el.rangeStart.value = start;
+            el.rangeEnd.value = end;
+
+            const availableInRange = countInRange(start, end);
+            const maxQuestion = Math.max(1, availableInRange);
+            el.questionCount.max = maxQuestion;
+            const count = clamp(toInt(el.questionCount.value, 30), 1, maxQuestion);
+            el.questionCount.value = count;
+
+            updateRangeGauge(start, end, maxNo);
+        }
+
+        /** 範囲ゲージ(レンジカバレッジバー)を最新の値で描画する */
+        function updateRangeGauge(start, end, maxNo) {
+            if (!el.rangeGauge) return;
+            const left = ((start - 1) / Math.max(1, maxNo)) * 100;
+            const width = ((end - start + 1) / Math.max(1, maxNo)) * 100;
+            el.rangeGauge.style.left = `${left.toFixed(2)}%`;
+            el.rangeGauge.style.width = `${width.toFixed(2)}%`;
+            if (el.rangeGaugeMax) el.rangeGaugeMax.textContent = String(maxNo);
+        }
+
+        function countInRange(start, end) {
+            if (!currentBook) return 0;
+            let n = 0;
+            for (const w of currentBook.words) {
+                if (w.no >= start && w.no <= end) n++;
+            }
+            return n;
+        }
+
+        function toInt(value, fallback) {
+            const n = parseInt(value, 10);
+            return Number.isFinite(n) ? n : fallback;
+        }
+
+        function clamp(n, min, max) {
+            return Math.min(Math.max(n, min), max);
+        }
+
+        // ------------------------------------------------------------------
+        // 設定の永続化(localStorage)
+        // ------------------------------------------------------------------
+        function saveSettings() {
+            // currentBook が未確定の状態(初期化中など)は保存しない
+            if (!currentBook) return;
+            const payload = {
+                bookId: el.bookSelect.value,
+                rangeStart: toInt(el.rangeStart.value, 1),
+                rangeEnd: toInt(el.rangeEnd.value, 1),
+                questionCount: toInt(el.questionCount.value, 30),
+                questionType: el.questionType.value,
+                // 40 文字でカット(maxlength と一致)
+                customTitle: (el.customTitle.value || '').slice(0, 40),
+            };
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            } catch (e) {
+                // プライベートブラウジング等で localStorage が無効でも致命的ではない
+                console.warn('[saveSettings] localStorage に保存できませんでした', e);
+            }
+        }
+
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                console.warn('[loadSettings] 設定の読み込みに失敗', e);
+                return null;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // テスト生成
+        // ------------------------------------------------------------------
+        function onGenerateClick() {
+            if (!currentBook) return;
+            clampInputs();
+
+            const start = toInt(el.rangeStart.value, 1);
+            const end = toInt(el.rangeEnd.value, 1);
+            const count = toInt(el.questionCount.value, 1);
+            const type = el.questionType.value === 'ja2en' ? 'ja2en' : 'en2ja';
+
+            const pool = currentBook.words.filter(w => w.no >= start && w.no <= end);
+            if (pool.length === 0) {
+                el.statusHint.textContent = '指定範囲に単語が存在しません。';
+                return;
+            }
+
+            const selected = sampleWithoutReplacement(pool, Math.min(count, pool.length));
+            const meta = `No.${start}〜${end} (全${selected.length}問)`;
+
+            // カスタムタイトル: 空ならデフォルトの「単語テスト」
+            const title = (el.customTitle.value || '').trim() || '単語テスト';
+            const vertical = isVerticalBook();
+            applyPaperOrientation(vertical);
+
+            const dyn = document.getElementById('dynamicPages');
+
+            if (vertical) {
+                // 縦書き(国語): 固定 article は隠し、設問数に応じて複数ページを動的生成
+                el.questionPaper.style.display = 'none';
+                el.answerPaper.style.display = 'none';
+                renderVerticalPages(dyn, title, selected, type);
+            } else {
+                // 横書き(英語): 固定 article を使い、動的ページはクリア
+                el.questionPaper.style.display = '';
+                el.answerPaper.style.display = '';
+                dyn.textContent = '';
+                // 念のため縦ヘッダーが残っていれば除去
+                el.questionPaper.querySelectorAll('.v-header').forEach(n => n.remove());
+                el.answerPaper.querySelectorAll('.v-header').forEach(n => n.remove());
+
+                el.testTitleHeading.textContent = title;
+                el.answerTitleHeading.textContent = title;
+                el.scoreLabel.textContent = `/ ${selected.length}`;
+                el.testSubTitle.textContent = `${currentBook.title} | ${meta}`;
+                el.answerSubTitle.textContent = `Answer Key | ${meta}`;
+                renderQuestions(selected, type);
+                renderAnswers(selected, type);
+            }
+
+            // 生成完了のフィードバック(緑チェック + ステータステキスト)
+            renderGeneratedStatus(selected.length);
+
+            el.previewArea.classList.remove('hidden');
+            // 印刷ボタン・再シャッフルボタンを露出。display は CSS 側 (.btn-accent / .btn-secondary)
+            // が inline-flex を担うので、 hidden を外すだけで OK。
+            el.printBtn.classList.remove('hidden');
+            el.reshuffleBtn.classList.remove('hidden');
+
+            // ヒント(ショートカット表示)はプレビュー後は不要なので隠す
+            const hint = document.getElementById('previewHint');
+            if (hint) hint.classList.add('hidden');
+
+            // 出現アニメ(再生成のたびに発火させたいので一度クラスを外して再付与)
+            el.previewArea.classList.remove('rise-in');
+            void el.previewArea.offsetWidth;
+            el.previewArea.classList.add('rise-in');
+
+            saveSettings();
+
+            // プレビューへスムーズスクロール(描画反映を待つために rAF を挟む)
+            requestAnimationFrame(() => {
+                el.previewArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+
+        /**
+         * Fisher-Yates シャッフルで先頭 k 個だけ抜き出す。
+         * Math.random は暗号用途ではないが「単語の並べ替え」用途には十分。
+         */
+        function sampleWithoutReplacement(arr, k) {
+            const a = arr.slice();
+            const n = a.length;
+            const limit = Math.min(k, n);
+            for (let i = 0; i < limit; i++) {
+                const j = i + Math.floor(Math.random() * (n - i));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a.slice(0, limit);
+        }
+
+        // ------------------------------------------------------------------
+        // レンダリング(DOM API のみを使用し XSS を回避)
+        // ------------------------------------------------------------------
+        // スタガー入場の最大遅延(これ以上の数の場合は飽和させる)。
+        // 50問でも 50×18ms = 900ms と「待たされない」程度に収める。
+        const STAGGER_STEP_MS = 18;
+        const STAGGER_MAX_MS = 900;
+
+        /** 国語(古文)系の単語帳は縦書きで出力する */
+        function isVerticalBook() {
+            return !!(currentBook && currentBook.kind === 'kobun');
+        }
+
+        /** 縦書き(国語)のときは用紙を A4 横向きにする(画面+印刷の両方) */
+        function applyPaperOrientation(vertical) {
+            // 画面プレビュー側: .landscape クラスで 297×210 表示に
+            for (const id of ['questionPaper', 'answerPaper']) {
+                const paper = document.getElementById(id);
+                if (paper) paper.classList.toggle('landscape', vertical);
+            }
+            // 印刷側: @page の size を JS で切り替える。
+            // 名前付き @page(page: landscape)は Chrome で確実に効かないため、
+            // 印刷ジョブ全体の用紙向きをこの 1 枚のスタイルで決める
+            // (1 回の印刷では英語=縦 or 国語=横 のどちらか一方のみなので問題ない)。
+            let st = document.getElementById('dynamicPageStyle');
+            if (!st) {
+                st = document.createElement('style');
+                st.id = 'dynamicPageStyle';
+                document.head.appendChild(st);
+            }
+            const size = vertical ? 'A4 landscape' : 'A4 portrait';
+            st.textContent =
+                `@media print { @page { size: ${size}; margin: 15mm 20mm; } }`;
+        }
+
+        // 縦書き(国語)1ページあたりの設問数。1段の列数 × 2段。
+        // 列が読みやすい幅(約13mm)に収まるよう 16 列 × 2 段 = 32 問/ページ。
+        const V_COLS_PER_BAND = 16;
+        const V_PER_PAGE = V_COLS_PER_BAND * 2;
+
+        /** 縦ヘッダー要素を作る。withFields=true で 氏名・点数 を付ける。 */
+        function buildVerticalHeader(titleText, withFields) {
+            const header = document.createElement('div');
+            header.className = 'v-header';
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'v-header-title';
+            titleEl.textContent = titleText;
+            header.appendChild(titleEl);
+
+            if (withFields) {
+                const name = document.createElement('div');
+                name.className = 'v-header-field';
+                name.textContent = '氏名';
+                header.appendChild(name);
+
+                const score = document.createElement('div');
+                score.className = 'v-header-score';
+                score.textContent = '点数';
+                header.appendChild(score);
+            }
+            return header;
+        }
+
+        /**
+         * 縦書き(国語)を複数ページに分割して動的生成する。
+         * V_PER_PAGE 問ごとに 1 ページ(A4 横・上下2段)。
+         * 問題ページを全部出してから、解答ページを全部出す。
+         */
+        function renderVerticalPages(container, title, questions, type) {
+            container.textContent = '';
+            const pages = chunkArray(questions, V_PER_PAGE);
+            const articles = [];
+
+            // 問題ページ(氏名・点数は1枚目だけに付ける)
+            pages.forEach((pageQs, pi) => {
+                articles.push(buildVerticalPage(title, pageQs, type, false, pi * V_PER_PAGE, pi === 0));
+            });
+            // 解答ページ
+            pages.forEach((pageQs, pi) => {
+                articles.push(buildVerticalPage(title + '【解答】', pageQs, type, true, pi * V_PER_PAGE, false));
+            });
+
+            articles.forEach((art, i) => {
+                if (i > 0) art.classList.add('page-break'); // 2 ページ目以降は改ページ
+                container.appendChild(art);
+            });
+        }
+
+        /** 1 ページ分の縦書き用紙(A4 横・上下2段 + 右ヘッダー)を作る */
+        function buildVerticalPage(titleText, questions, type, isAnswer, baseNo, withFields) {
+            const art = document.createElement('article');
+            art.className = 'a4-paper landscape print-container bg-white';
+
+            const list = document.createElement('div');
+            list.className = 'vertical-list';
+
+            const half = Math.ceil(questions.length / 2);
+            [questions.slice(0, half), questions.slice(half)].forEach((group, gi) => {
+                const band = document.createElement('div');
+                band.className = 'v-band';
+                group.forEach((q, i) => {
+                    const number = baseNo + gi * half + i + 1;
+                    const questionText = type === 'en2ja' ? q.word : q.meaning;
+                    let item;
+                    if (isAnswer) {
+                        const answerText = type === 'en2ja' ? q.meaning : q.word;
+                        item = buildVerticalAnswerItem(number, questionText, answerText, q.no);
+                    } else {
+                        item = buildVerticalQuestionItem(number, questionText);
+                    }
+                    band.appendChild(item);
+                });
+                list.appendChild(band);
+            });
+
+            art.append(list, buildVerticalHeader(titleText, withFields));
+            return art;
+        }
+
+        /** 配列を size ごとに分割 */
+        function chunkArray(arr, size) {
+            const out = [];
+            for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+            return out;
+        }
+
+        function renderQuestions(questions, type) {
+            // 横書き(英語)専用。縦書きは renderVerticalPages が担当。
+            el.testContainer.textContent = '';
+            el.testContainer.classList.remove('vertical-list');
+            questions.forEach((q, idx) => {
+                const text = type === 'en2ja' ? q.word : q.meaning;
+                const row = buildQuestionRow(idx + 1, text);
+                applyStaggerDelay(row, idx);
+                el.testContainer.appendChild(row);
+            });
+        }
+
+        function renderAnswers(questions, type) {
+            el.answerContainer.textContent = '';
+            el.answerContainer.classList.remove('vertical-list');
+            questions.forEach((q, idx) => {
+                const questionText = type === 'en2ja' ? q.word : q.meaning;
+                const answerText = type === 'en2ja' ? q.meaning : q.word;
+                const row = buildAnswerRow(idx + 1, questionText, answerText, q.no);
+                applyStaggerDelay(row, idx);
+                el.answerContainer.appendChild(row);
+            });
+        }
+
+        /** 問題セル(番号 + 古語)を作る共通処理 */
+        function buildVerticalQuestionCell(number, questionText) {
+            const cell = document.createElement('div');
+            cell.className = 'v-cell-q';
+
+            const num = document.createElement('div');
+            num.className = 'v-num';
+            num.textContent = `${number}.`;
+
+            const word = document.createElement('div');
+            word.className = 'v-word';
+            word.textContent = questionText;
+            word.title = questionText;
+
+            cell.append(num, word);
+            return cell;
+        }
+
+        /** 縦書きの問題用アイテム(問題セル + 空の記入セル) */
+        function buildVerticalQuestionItem(number, questionText) {
+            const item = document.createElement('div');
+            item.className = 'v-item';
+
+            const writeCell = document.createElement('div');
+            writeCell.className = 'v-cell-a';
+            writeCell.setAttribute('aria-hidden', 'true');
+
+            item.append(buildVerticalQuestionCell(number, questionText), writeCell);
+            return item;
+        }
+
+        /** 縦書きの解答用アイテム(問題セル + 解答入り記入セル) */
+        function buildVerticalAnswerItem(number, questionText, answerText, sourceNo) {
+            const item = document.createElement('div');
+            item.className = 'v-item';
+
+            const ansCell = document.createElement('div');
+            ansCell.className = 'v-cell-a';
+
+            const ans = document.createElement('div');
+            ans.className = 'v-answer';
+            ans.textContent = answerText;
+            ans.title = answerText;
+            ansCell.appendChild(ans);
+
+            // 復習用: 元の単語帳での通し番号を小さく添える(セルの下部)
+            if (sourceNo != null) {
+                const noEl = document.createElement('div');
+                noEl.className = 'v-source-no';
+                noEl.textContent = `No.${sourceNo}`;
+                ansCell.appendChild(noEl);
+            }
+
+            item.append(buildVerticalQuestionCell(number, questionText), ansCell);
+            return item;
+        }
+
+        function applyStaggerDelay(node, idx) {
+            node.classList.add('stagger-item');
+            const delay = Math.min(idx * STAGGER_STEP_MS, STAGGER_MAX_MS);
+            node.style.animationDelay = `${delay}ms`;
+        }
+
+        /**
+         * 生成完了時のステータス表示を作る。
+         * 緑のチェックアイコン + 「N問を生成しました ・ 印刷の準備ができています」をテキストノードで構築する。
+         * (innerHTML 不使用で XSS 経路ゼロ)
+         */
+        function renderGeneratedStatus(count) {
+            el.statusHint.textContent = '';
+            el.statusHint.className = 'text-xs font-medium flex items-center gap-1.5 text-slate-600';
+            const ns = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(ns, 'svg');
+            svg.setAttribute('class', 'w-3.5 h-3.5 text-emerald-500');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'currentColor');
+            svg.setAttribute('stroke-width', '2.5');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('aria-hidden', 'true');
+            const path = document.createElementNS(ns, 'path');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+            path.setAttribute('d', 'M5 13l4 4L19 7');
+            svg.appendChild(path);
+            el.statusHint.appendChild(svg);
+
+            const main = document.createElement('span');
+            main.textContent = `${count}問を生成しました`;
+            el.statusHint.appendChild(main);
+
+            const sep = document.createElement('span');
+            sep.className = 'text-slate-300';
+            sep.textContent = '·';
+            el.statusHint.appendChild(sep);
+
+            const sub = document.createElement('span');
+            sub.className = 'text-slate-400';
+            sub.textContent = '印刷の準備ができています';
+            el.statusHint.appendChild(sub);
+        }
+
+        function buildQuestionRow(number, questionText) {
+            // 解答用紙と同じ「番号 | 問題 | 記入欄(縦の区切り線つき)」レイアウト。
+            // 右側の記入欄は空白のままで、生徒が答えを書き込む。
+            const row = document.createElement('div');
+            row.className = 'flex items-start border-b border-slate-100 py-2';
+
+            const numEl = document.createElement('div');
+            numEl.className = 'w-7 text-[11px] font-bold text-slate-400 font-mono text-right mr-2 mt-0.5 shrink-0';
+            numEl.textContent = `${number}.`;
+
+            const qEl = document.createElement('div');
+            qEl.className = 'w-[40%] text-[12px] text-slate-800 font-semibold pr-2 leading-snug break-words';
+            qEl.textContent = questionText;
+            qEl.title = questionText;
+
+            // 記入欄: 解答用紙と同じ位置・同じ区切り線。中身は空(min-height で書き込む高さを確保)
+            const blankEl = document.createElement('div');
+            blankEl.className = 'w-[60%] pl-2 border-l-2 border-slate-100 min-h-[1.5rem]';
+            blankEl.setAttribute('aria-hidden', 'true');
+
+            row.append(numEl, qEl, blankEl);
+            return row;
+        }
+
+        function buildAnswerRow(number, questionText, answerText, sourceNo) {
+            // 意味文は長くなりがちなので、解答欄は truncate せずに折り返す方針。
+            // 折り返した分だけ行が縦に伸びるため、items-start で上揃え。
+            const row = document.createElement('div');
+            row.className = 'flex items-start border-b border-slate-100 py-2';
+
+            const numEl = document.createElement('div');
+            numEl.className = 'w-7 text-[11px] font-bold text-slate-400 font-mono text-right mr-2 mt-0.5 shrink-0';
+            numEl.textContent = `${number}.`;
+
+            const qEl = document.createElement('div');
+            qEl.className = 'w-[40%] text-[11px] text-slate-600 font-medium pr-2 leading-snug break-words';
+            qEl.textContent = questionText;
+            qEl.title = questionText;
+
+            const aEl = document.createElement('div');
+            aEl.className = 'w-[60%] pl-2 border-l-2 border-slate-100';
+
+            const aText = document.createElement('div');
+            aText.className = 'text-[12px] font-bold text-indigo-600 leading-snug break-words';
+            aText.textContent = answerText;
+            aText.title = answerText;
+            aEl.appendChild(aText);
+
+            // 復習用: 元の単語帳での通し番号を小さく添える
+            if (sourceNo != null) {
+                const noEl = document.createElement('div');
+                noEl.className = 'text-[9px] font-mono text-slate-600 mt-0.5';
+                noEl.textContent = `No.${sourceNo}`;
+                aEl.appendChild(noEl);
+            }
+
+            row.append(numEl, qEl, aEl);
+            return row;
+        }
+
+        // ------------------------------------------------------------------
+        // 補助
+        // ------------------------------------------------------------------
+        function buildLoadErrorMessage(err) {
+            if (err && err.message) return err.message;
+            return '原因不明のエラーが発生しました。ブラウザの開発者ツール(コンソール)を確認してください。';
+        }
+    </script>
+</body>
+
+</html>
