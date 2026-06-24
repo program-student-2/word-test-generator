@@ -45,7 +45,4 @@ data/sample-kobun.js    サンプル古文単語
 
 ## ライセンス
 
-© 2026 program_student. All rights reserved.
-
-本リポジトリはポートフォリオ閲覧用に公開しています。コードの閲覧は自由ですが、
-複製・改変・再配布・商用利用は許可していません。
+[MIT License](LICENSE) で公開しています。
